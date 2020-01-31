@@ -1,0 +1,7 @@
+{
+    "require": {
+        "php-ai/php-ml": "^0.8.0",
+        "ext-json": "^1.5",
+        "ext-xdebug": "^2.5"
+    }
+}

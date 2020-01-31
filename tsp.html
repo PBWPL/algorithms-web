@@ -1,0 +1,369 @@
+<html lang="en">
+<head>
+    <title>©PB - travelling salesman problem (TSP)</title>
+    <!-- META -->
+    <meta charset="UTF-8">
+    <meta content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0"
+          name="viewport">
+    <meta content="ie=edge" http-equiv="X-UA-Compatible">
+    <!-- JS -->
+    <script src="node_modules/jquery/dist/jquery.min.js"></script>
+    <script src="node_modules/file-saver/dist/FileSaver.min.js"></script>
+    <script src="shared.js"></script>
+</head>
+<body>
+<!-- CONTENT START -->
+<hr>
+<h1>©PB - travelling salesman problem (TSP)</h1>
+<button onclick="history.back()">back</button>
+<hr>
+
+
+<form name="tsp">
+    <div>
+        <div>Enter coords:</div>
+        <span id="coords_a">
+            A(
+            <label for="Ax">X:</label><input id="Ax" max="10" min="1" type="number" value="0">
+            ,
+            <label for="Ay">Y:</label><input id="Ay" max="10" min="1" type="number" value="0">
+            )
+        </span>
+        <br>
+        <span id="coords_b">
+            B(
+            <label for="Bx">X:</label><input id="Bx" max="10" min="1" type="number" value="4">
+            ,
+            <label for="By">Y:</label><input id="By" max="10" min="1" type="number" value="4">
+            )
+        </span>
+    </div>
+    <div>
+        <input data-buttonText="x" id="file" name="file[]" type="file">
+    </div>
+    <div id="canvas">
+        <canvas height="200" id="canvas-scheme" style="border: darkblue 2px dashed; display: block; margin: auto"
+                width="200"></canvas>
+    </div>
+    <br>
+    <div id="matrix"></div>
+    <div>
+        <label for="holes">Number of holes:</label>
+        <input id="holes" max="10" min="1" type="number" value="4">
+        <div>Choose hole:</div>
+        <div id="holes-table"></div>
+    </div>
+    <div id="choose-holes"></div>
+    <div>
+        <input onclick="tspAlgorithm()" type="button" value="calculate">
+        <input onclick="generateTable()" type="button" value="generate">
+        <input onclick="clearTable()" type="button" value="clear">
+    </div>
+    <div id="result"></div>
+</form>
+<!-- CONTENT END -->
+
+<!-- JS -->
+<script>
+    // Events listener
+    document.getElementById('file')
+        .addEventListener('change', loadFile, false);
+    document.getElementById('coords_a')
+        .addEventListener('input', helperTable, false);
+    document.getElementById('coords_b')
+        .addEventListener('input', helperTable, false);
+    document.getElementById('holes')
+        .addEventListener('input', helperTable, false);
+    document.getElementById('holes-table')
+        .addEventListener('input', fillTable, false);
+
+    // Helper Table
+    function helperTable() {
+        createHoles();
+        createTable();
+        createCanvas();
+    }
+
+    // Create Canvas
+    function createCanvas() {
+        let x = $("#Bx").val() - $("#Ax").val();
+        let y = $("#By").val() - $("#Ay").val();
+        $("#canvas-scheme").attr({
+            width: x * 50,
+            height: y * 50
+        });
+    }
+
+    // Draw Holes
+    function drawHoles() {
+        let canvas = document.getElementById("canvas-scheme");
+        let holes = $("#holes").val();
+        let ctx = canvas.getContext("2d");
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let i = 0; i < holes; i++) {
+            ctx.beginPath();
+            ctx.arc($("#x" + i + "y0").val() * 50, $("#x" + i + "y1").val() * 50, 5, 0, 5 * Math.PI);
+            ctx.fillStyle = '#00008B';
+            ctx.fill();
+            ctx.fillStyle = '#00008B';
+            ctx.stroke();
+        }
+    }
+
+    // Process data to table
+    function processData(contents) {
+        let tmp, col;
+        let row = [], matrix = [];
+
+        let lines = contents.split("\n");
+        let holes = lines[0];
+        tmp = lines[1].split(" ");
+        let Ax = tmp[0];
+        let Ay = tmp[1];
+        tmp = lines[2].split(" ");
+        let Bx = tmp[0];
+        let By = tmp[1];
+
+        $("#holes").val(holes);
+        $("#Ax").val(Ax);
+        $("#Ay").val(Ay);
+        $("#Bx").val(Bx);
+        $("#By").val(By);
+
+        helperTable();
+
+        for (let i = 3; i < lines.length - 1; i++) {
+            col = lines[i];
+            for (let j = 0; j < holes; j++) {
+                row.push(Number(col.split(" ")[j]));
+                $("#i" + (i - 3) + "j" + j).val(Number(col.split(" ")[j]));
+            }
+            matrix.push(row);
+            row = [];
+        }
+
+        console.log(holes);
+        console.log(Ax, Ay);
+        console.log(Bx, By);
+        console.table(matrix);
+    }
+
+    // Create table
+    function createTable() {
+        document.getElementById("matrix").innerHTML = '';
+        let error = $("#error");
+        let holes = $("#holes").val();
+
+        if (holes > 50) {
+            error.text("Values from 1 to 50");
+        } else if (holes !== 0) {
+            error.text("");
+            let table = document.createElement("table");
+            let thead = document.createElement("thead");
+            let tbody = document.createElement("tbody");
+            let row, cell;
+
+            let heading = [];
+
+            heading[0] = "X/Y";
+
+            for (let i = 1; i <= holes; i++) {
+                heading[i] = "x" + i;
+            }
+
+            table.appendChild(thead);
+            table.appendChild(tbody);
+            table.setAttribute("align", "center");
+
+            row = document.createElement("tr");
+            thead.appendChild(row);
+
+            for (let a = 0; a < heading.length; a++) {
+                cell = document.createElement("th");
+                cell.innerHTML = heading[a];
+                row.appendChild(cell);
+            }
+
+            for (let i = 0; i < holes; i++) {
+                row = document.createElement("tr");
+                row.setAttribute("align", "center");
+                tbody.appendChild(row);
+                cell = document.createElement("td");
+                cell = document.createElement("td");
+                cell.innerHTML = "y" + (i + 1);
+                row.appendChild(cell);
+
+                for (let j = 0; j < heading.length - 1; j++) {
+                    cell = document.createElement("td");
+                    cell.innerHTML = "<input type='number' min='0' max='100' value='' id=i" + i + "j" + j + " class='numbers' align='center'>";
+                    row.appendChild(cell);
+                }
+
+            }
+
+            let tb = $("#matrix");
+            tb.append(table);
+        }
+    }
+
+    // Calc Dist
+    function calcDist(x0, y0, x1, y1) {
+        return Math.sqrt(Math.pow(x1 - x0, 2) + Math.pow(y1 - y0, 2));
+    }
+
+    // Fill Table
+    function fillTable() {
+        let holes = $("#holes").val();
+        let holes_table = $("#holes-table");
+        let x1, y1, x2, y2;
+        let tmp1 = [];
+        let tmp2 = [];
+
+        for (let i = 0; i < holes; i++) {
+            for (let j = 0; j < holes; j++) {
+                x1 = holes_table.find("#x" + i + "y" + 0).val();
+                y1 = holes_table.find("#x" + i + "y" + 1).val();
+                x2 = holes_table.find("#x" + j + "y" + 0).val();
+                y2 = holes_table.find("#x" + j + "y" + 1).val();
+                tmp2.push(Math.floor(calcDist(x1, y1, x2, y2)));
+            }
+            tmp1.push(tmp2);
+            tmp2 = []
+        }
+
+        for (let i = 0; i < holes; i++) {
+            for (let j = 0; j < holes; j++) {
+                $("#matrix").find("#i" + i + "j" + j).val(tmp1[i][j]);
+            }
+        }
+        drawHoles();
+    }
+
+
+    // create Holes
+    function createHoles() {
+        document.getElementById("holes-table").innerHTML = '';
+        let holes = $("#holes").val();
+        let Ax = $("#Ax").val();
+        let Ay = $("#Ay").val();
+        let Bx = $("#Bx").val();
+        let By = $("#By").val();
+
+
+        let table = document.createElement("table");
+        let thead = document.createElement("thead");
+        let tbody = document.createElement("tbody");
+        let row, cell;
+        let i, j;
+
+        let heading = [];
+
+        heading[0] = "Holes";
+        heading[1] = "x";
+        heading[2] = "y";
+
+        table.appendChild(thead);
+        table.appendChild(tbody);
+
+        row = document.createElement("tr");
+        thead.appendChild(row);
+
+        for (let a = 0; a < heading.length; a++) {
+            cell = document.createElement("th");
+            cell.innerHTML = heading[a];
+            row.appendChild(cell);
+        }
+
+        for (i = 0; i < holes; i++) {
+            row = document.createElement("tr");
+            tbody.appendChild(row);
+            cell = document.createElement("td");
+            cell = document.createElement("td");
+            cell.innerHTML = (i + 1);
+            row.appendChild(cell);
+
+            for (j = 0; j < heading.length; j++) {
+                if (j < heading.length - 1) {
+                    cell = document.createElement("td");
+                    if (j % 2 === 0) {
+                        if (i === 0) {
+                            cell.innerHTML = "<input type='number' min='" + Ay + "' max='" + By + "' value='0' id=x" + i + "y" + j + " class='numbers-disabled' disabled>";
+                        } else {
+                            cell.innerHTML = "<input type='number' min='" + Ax + "' max='" + Bx + "' value='0' id=x" + i + "y" + j + " class='numbers'>";
+                        }
+                    } else {
+                        if (i === 0) {
+                            cell.innerHTML = "<input type='number' min='" + Ay + "' max='" + By + "' value='0' id=x" + i + "y" + j + " class='numbers-disabled' disabled>";
+                        } else {
+                            cell.innerHTML = "<input type='number' min='" + Ay + "' max='" + By + "' value='0' id=x" + i + "y" + j + " class='numbers'>";
+                        }
+                    }
+                    row.appendChild(cell);
+                } else {
+                    cell = document.createElement("td");
+                    cell.innerHTML = "<input type='radio' name='choose_holes' value=" + i + " align='center'>";
+                    row.appendChild(cell);
+                }
+            }
+
+        }
+
+        let tb = $("#holes-table");
+        tb.append(table);
+    }
+
+    // Generate table
+    function generateTable() {
+        let holes = $("#holes").val();
+        let Ax = $("#Ax").val();
+        let Ay = $("#Ay").val();
+        let Bx = $("#Bx").val();
+        let By = $("#By").val();
+        for (let i = 1; i < holes; i++) {
+            $("#x" + i + "y0").val(Math.floor(Math.random() * Number(Bx)) + Number(Ax));
+            $("#x" + i + "y1").val(Math.floor(Math.random() * Number(By)) + Number(Ay));
+        }
+        fillTable();
+        drawHoles();
+        console.log("Generation complited!");
+    }
+
+    // TSP algorithm
+    function tspAlgorithm() {
+        let t0 = performance.now();
+        let matrix = [], value = [];
+        let holes = $("#holes").val();
+        let choose = $('input[name=choose_holes]:checked').val();
+
+        for (let i = 0; i < holes; i++) {
+            for (let j = 0; j < holes; j++) {
+                let cell = $("#i" + i + "j" + j).val();
+                value.push(cell);
+            }
+            matrix.push(value);
+            value = [];
+        }
+
+        // JS --> AJAX --> PHP
+
+        $.ajax({
+            type: "POST",
+            url: "tsp.php",
+            data: {r: JSON.stringify([matrix, choose])},
+            success: function (response) {
+                $("#result").html("<pre>" + response + "</pre>");
+            },
+            error: function (response) {
+                $("#result").html("<br>" + "Known Error");
+            }
+        });
+
+        let t1 = performance.now();
+        console.log("Working time: " + (t1 - t0).toFixed(3) + " ms");
+    }
+
+    helperTable();
+</script>
+</body>
+</html>

@@ -1,0 +1,216 @@
+<html lang="en">
+<head>
+    <title>©PB - knapsnack</title>
+    <!-- META -->
+    <meta charset="UTF-8">
+    <meta content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0"
+          name="viewport">
+    <meta content="ie=edge" http-equiv="X-UA-Compatible">
+    <!-- JS -->
+    <script src="node_modules/jquery/dist/jquery.min.js"></script>
+    <script src="node_modules/file-saver/dist/FileSaver.min.js"></script>
+    <script src="shared.js"></script>
+</head>
+<body>
+<!-- CONTENT START -->
+<hr>
+<h1>©PB - knapsnack</h1>
+<button onclick="history.back()">back</button>
+<hr>
+
+<form name="knapsnack">
+    <div>
+        <label for="n">Enter matrix size:</label>
+        <input id="n" max="50" min="0" type="number" value="4">
+    </div>
+    <div>
+        <input id="file" name="file[]" type="file" data-buttonText="x">
+    </div>
+    <div id="matrix"></div>
+    <div>
+        <label for="w">Value knapsnack:</label>
+        <input id="w" max="50" min="1" type="number" value="10">
+    </div>
+    <div>
+        <input onclick="knapsnackAlgorithmGreedy()" type="button" value="greedy">
+        <input onclick="knapsnackAlgorithmDynamic()" type="button" value="dynamic">
+        <input onclick="generateTable()" type="button" value="generate">
+        <input onclick="clearTable()" type="button" value="clear">
+    </div>
+    <div>
+        <input id="filename" placeholder="file name" type="text">
+        <input onclick="saveFile()" type="button" value="save">
+    </div>
+    <div id="result"></div>
+</form>
+<!-- CONTENT END -->
+
+<!-- JS -->
+<script>
+    // Events listener
+    document.getElementById('file')
+        .addEventListener('change', loadFile, false);
+    document.getElementById('n')
+        .addEventListener('input', createTable, false);
+
+    // Process data to table
+    function processData(contents) {
+        let f_line;
+        let col = '', row = [];
+        let matrix = [];
+        let n = $("#n");
+        f_line = Number(contents.split("\n")[0]);
+        n.val(f_line);
+        createTable();
+        for (let i = 1; i <= 2; i++) {
+            col = contents.split("\n")[i];
+            for (let j = 0; j < f_line; j++) {
+                row.push(Number(col.split(" ")[j]));
+                $("#i" + (i - 1) + "j" + j).val(Number(col.split(" ")[j]));
+            }
+            matrix.push(row);
+            row = [];
+            n.val(f_line);
+        }
+        console.log(f_line);
+        console.table(matrix);
+    }
+
+    // Create table
+    function createTable() {
+        document.getElementById("matrix").innerHTML = '';
+        let error = $("#error");
+        let n = $("#n").val();
+
+        if (n > 50) {
+            error.text("Values from 1 to 50");
+        } else if (n !== 0) {
+            error.text("");
+            let table = document.createElement("table");
+            let thead = document.createElement("thead");
+            let tbody = document.createElement("tbody");
+            let row, cell;
+            let i, j;
+
+            let heading = [];
+
+            heading[0] = "Item/Data";
+
+            for (i = 1; i <= n; i++) {
+                heading[i] = "I" + i;
+            }
+
+            table.appendChild(thead);
+            table.appendChild(tbody);
+            table.setAttribute("align", "center");
+
+            row = document.createElement("tr");
+            thead.appendChild(row);
+
+            for (let a = 0; a < heading.length; a++) {
+                cell = document.createElement("th");
+                cell.innerHTML = heading[a];
+                row.appendChild(cell);
+            }
+
+            for (i = 0; i < 2; i++) {
+                row = document.createElement("tr");
+                row.setAttribute("align", "center");
+                tbody.appendChild(row);
+                cell = document.createElement("td");
+                if (i === 0) {
+                    cell.innerHTML = "value";
+                } else if (i === 1) {
+                    cell.innerHTML = "weight";
+                }
+                row.appendChild(cell);
+
+                for (j = 0; j < heading.length - 1; j++) {
+                    cell = document.createElement("td");
+                    cell.innerHTML = "<input type=number min='0' max='100' value='' id=i" + i + "j" + j + " class='numbers' align='center'>";
+                    row.appendChild(cell);
+                }
+
+            }
+
+            let tb = $("#matrix");
+            tb.append(table);
+        }
+    }
+
+    function generateTable() {
+        let n = Number($("#n").val());
+        for (let i = 0; i < 2; i++) {
+            for (let j = 0; j < n; j++) {
+                $("#i" + i + "j" + j).val(Math.floor(Math.random() * 100));
+            }
+        }
+        console.log("Generation complited!");
+    }
+
+    // Knapsnack Greedy algorithm
+    function knapsnackAlgorithmGreedy() {
+        let t0 = performance.now();
+        let matrix = [], value = [];
+        let n = $("#n").val();
+        for (let i = 0; i < 2; i++) {
+            for (let j = 0; j < n; j++) {
+                let cell = $("#i" + i + "j" + j).val();
+                value.push(cell);
+            }
+            matrix.push(value);
+            value = [];
+        }
+
+        // JS --> XML --> PHP
+
+        let xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function () {
+            if (this.readyState === XMLHttpRequest.DONE && this.status === 200) {
+                document.getElementById("result").innerText = this.responseText;
+            }
+        };
+        xhr.open("POST", "knapsnack_greedy.php", true);
+        let h = $("#w").val();
+        let data = h + "*" + JSON.stringify(matrix);
+        xhr.send(data);
+
+        let t1 = performance.now();
+        console.log("Working time: " + (t1 - t0).toFixed(3) + " ms");
+    }
+
+    // Knapsnack Dynamic algorithm
+    function knapsnackAlgorithmDynamic() {
+        let t0 = performance.now();
+        let matrix = [], value = [];
+        let n = $("#n").val();
+        for (let i = 0; i < 2; i++) {
+            for (let j = 0; j < n; j++) {
+                let cell = $("#i" + i + "j" + j).val();
+                value.push(cell);
+            }
+            matrix.push(value);
+            value = [];
+        }
+
+        // JS --> XML --> PHP
+
+        let xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function () {
+            if (this.readyState === XMLHttpRequest.DONE && this.status === 200) {
+                document.getElementById("result").innerText = this.responseText;
+            }
+        };
+        xhr.open("POST", "knapsnack_dynamic.php", true);
+        let h = $("#w").val();
+        let data = h + "*" + JSON.stringify(matrix);
+        xhr.send(data);
+
+        let t1 = performance.now();
+        console.log("Working time: " + (t1 - t0).toFixed(3) + " ms");
+    }
+
+    createTable();
+</script>
+</body>
+</html>

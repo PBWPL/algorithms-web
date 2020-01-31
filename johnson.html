@@ -1,0 +1,257 @@
+<html lang="en">
+<head>
+    <title>©PB - johnson</title>
+    <!-- META -->
+    <meta charset="UTF-8">
+    <meta content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0"
+          name="viewport">
+    <meta content="ie=edge" http-equiv="X-UA-Compatible">
+    <!-- JS -->
+    <script src="node_modules/jquery/dist/jquery.min.js"></script>
+    <script src="node_modules/file-saver/dist/FileSaver.min.js"></script>
+    <script src="shared.js"></script>
+    <script src="core.js"></script>
+    <script src="charts.js"></script>
+    <script src="animated.js"></script>
+</head>
+<body>
+<!-- CONTENT START -->
+<hr>
+<h1>©PB - johnson</h1>
+<button onclick="history.back()">back</button>
+<hr>
+
+
+<form name="johnson">
+    <div>
+        <label for="n">Enter tasks:</label><input id="n" max="10" min="1" type="number" value="5">
+        <br>
+        <label id="machines">Number of machines:
+            <br>2 &rarr;
+            <input align='center' checked name='machines' type='radio' value="2">
+            <br>3 &rarr;
+            <input align='center' name='machines' type='radio' value="3">
+        </label>
+    </div>
+    <div>
+        <input data-buttonText="x" id="file" name="file[]" type="file">
+    </div>
+    <div align="center">
+        <div align="center" id="chart" style="height: 150px; width: 500px; position: center"></div>
+    </div>
+    <br>
+    <div id="matrix"></div>
+    <div>
+        <input onclick="johnsonAlgorithm()" type="button" value="calculate">
+        <input onclick="generateTable()" type="button" value="generate">
+        <input onclick="clearTable()" type="button" value="clear">
+    </div>
+    <br>
+    <div id="result"></div>
+</form>
+<!-- CONTENT END -->
+
+<!-- JS -->
+<script>
+    // Events listener
+    document.getElementById('file')
+        .addEventListener('change', loadFile, false);
+    document.getElementById('n')
+        .addEventListener('input', createTable, false);
+    document.getElementById('machines')
+        .addEventListener('change', createTable, false);
+
+    function drawChart(chart_data) {
+        am4core.useTheme(am4themes_animated);
+
+        let chart = am4core.create("chart", am4charts.XYChart);
+
+        if (chart_data === undefined) {
+            chart.data = [{
+                'name': 'M1',
+                'startTime': 0,
+                'endTime': 10,
+            }, {
+                'name': 'M2',
+                'startTime': 0,
+                'endTime': 5,
+            }]
+        } else {
+            chart.data = chart_data;
+        }
+
+        let categoryAxis = chart.yAxes.push(new am4charts.CategoryAxis());
+        categoryAxis.dataFields.category = "name";
+        categoryAxis.renderer.inversed = true;
+        categoryAxis.renderer.grid.template.location = 0;
+
+        let valueAxis = chart.xAxes.push(new am4charts.ValueAxis());
+        valueAxis.renderer.minGridDistance = 50;
+
+        let columnSeries = chart.series.push(new am4charts.ColumnSeries());
+        columnSeries.dataFields.categoryY = "name";
+        columnSeries.dataFields.valueX = "endTime";
+        columnSeries.dataFields.openValueX = "startTime";
+        columnSeries.columns.template.tooltipText = "[bold]{categoryY}[/]\nstarts at {openValueX}\nends at {valueX}";
+
+        let columnTemplate = columnSeries.columns.template;
+        columnTemplate.strokeOpacity = 0;
+        columnTemplate.propertyFields.fill = 'color';
+        columnTemplate.height = am4core.percent(100);
+    }
+
+    // Process data to table
+    function processData(contents) {
+        let col;
+        let row = [], matrix = [];
+
+        let lines = contents.split("\n");
+        let n = parseInt(lines[0]);
+        let machines = parseInt(lines[1]);
+
+        $("#n").val(n);
+
+        if (machines === 2) {
+            $('input[name=machines]:first').prop('checked', true);
+        } else {
+            $('input[name=machines]:last').prop('checked', true);
+        }
+
+        createTable();
+
+        for (let i = 2; i < lines.length - 1; i++) {
+            col = lines[i];
+            for (let j = 0; j < n; j++) {
+                row.push(Number(col.split(" ")[j]));
+                $("#i" + (i - 2) + "j" + j).val(Number(col.split(" ")[j]));
+            }
+            matrix.push(row);
+            row = [];
+        }
+
+        console.log(n, machines);
+        console.table(matrix);
+    }
+
+    // Create table
+    function createTable() {
+        document.getElementById("matrix").innerHTML = '';
+        let error = $("#error");
+        let n = $("#n").val();
+        let choose = $('input[name=machines]:checked').val();
+
+        if (n > 50) {
+            error.text("Values from 1 to 50");
+        } else if (n !== 0) {
+            error.text("");
+            let table = document.createElement("table");
+            let thead = document.createElement("thead");
+            let tbody = document.createElement("tbody");
+            let row, cell;
+            let i, j;
+
+            let heading = [];
+
+            heading[0] = "Task/Machine";
+
+            for (i = 1; i <= n; i++) {
+                heading[i] = "T" + i;
+            }
+
+            table.appendChild(thead);
+            table.appendChild(tbody);
+            table.setAttribute("align", "center");
+
+            row = document.createElement("tr");
+            thead.appendChild(row);
+
+            for (let a = 0; a < heading.length; a++) {
+                cell = document.createElement("th");
+                cell.innerHTML = heading[a];
+                row.appendChild(cell);
+            }
+
+            for (i = 0; i < choose; i++) {
+                row = document.createElement("tr");
+                row.setAttribute("align", "center");
+                tbody.appendChild(row);
+                cell = document.createElement("td");
+                cell.innerHTML = "M" + (i + 1);
+                row.appendChild(cell);
+
+                for (j = 0; j < heading.length - 1; j++) {
+                    cell = document.createElement("td");
+                    cell.innerHTML = "<input type=number min='0' max='100' value='' id=i" + i + "j" + j + " class='numbers' align='center'>";
+                    row.appendChild(cell);
+                }
+
+            }
+
+            let tb = $("#matrix");
+            tb.append(table);
+        }
+    }
+
+    function generateTable() {
+        let n = Number($("#n").val());
+        let choose = $('input[name=machines]:checked').val();
+        for (let i = 0; i < choose; i++) {
+            for (let j = 0; j < n; j++) {
+                $("#i" + i + "j" + j).val(Math.floor(Math.random() * 7));
+            }
+        }
+        console.log("Generation complited!");
+    }
+
+    function replaceAll(str, find, replace) {
+        return str.replace(new RegExp(escapeRegExp(find), 'g'), replace);
+    }
+
+    // Johnson algorithm
+    function johnsonAlgorithm() {
+        let t0 = performance.now();
+        let matrix = [], value = [];
+        let n = $('#n').val();
+        let machines = $('input[name=machines]:checked').val();
+
+        for (let i = 0; i < machines; i++) {
+            for (let j = 0; j < n; j++) {
+                let cell = $("#i" + i + "j" + j).val();
+                value.push(cell);
+            }
+            matrix.push(value);
+            value = [];
+        }
+
+        // JS --> AJAX --> PHP
+
+        $.ajax({
+            type: "POST",
+            url: "johnson.php",
+            data: {r: JSON.stringify(matrix)},
+            success: function (response) {
+                if (typeof response === 'string') {
+                    try {
+                        let obj = JSON.parse(response);
+                        drawChart(obj.chart_data);
+                        $("#result").html("L = " + obj.list + "<br> T = " + obj.result + "<small style='color: red'> (-1 numeracja tablicy od 0)</small>");
+                    } catch (e) {
+                        $("#result").html("<pre>" + response + "</pre>");
+                    }
+                }
+
+            },
+            error: function (response) {
+                $("#result").html("<br>" + "Known Error");
+            }
+        });
+
+        let t1 = performance.now();
+        console.log("Working time: " + (t1 - t0).toFixed(3) + " ms");
+    }
+
+    createTable();
+    drawChart();
+</script>
+</body>
+</html>
